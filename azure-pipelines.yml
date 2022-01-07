@@ -17,7 +17,7 @@ steps:
     subscriptionId: '28b2a0e6-67a2-44e3-9705-dea6aaba40f4'
     action: 'Create Or Update Resource Group'
     resourceGroupName: 'PipeTest_RG'
-    location: 'East US'
+    location: 'WEST US'
     templateLocation: 'URL of the file'
     csmFileLink: 'https://raw.githubusercontent.com/paframX/DemoNestedRepo/master/template%20(1).json'
     csmParametersFileLink: 'https://raw.githubusercontent.com/paframX/DemoNestedRepo/master/parametersFile.json'
