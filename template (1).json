@@ -1,0 +1,171 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "DemoVMName": {
+            "type": "string",
+            "minLength": 1
+        },
+        "DemoVMAdminUserName": {
+            "type": "string",
+            "minLength": 1
+        },
+        "DemoVMAdminPassword": {
+            "type": "securestring"
+        },
+        "DemoVMWindowsOSVersion": {
+            "type": "string",
+            "defaultValue": "2012-R2-Datacenter",
+            "allowedValues": [
+                "2008-R2-SP1",
+                "2012-Datacenter",
+                "2012-R2-Datacenter",
+                "Windows-Server-Technical-Preview"
+            ]
+        },
+        "DemoBlobType": {
+            "type": "string",
+            "defaultValue": "Standard_LRS",
+            "allowedValues": [
+                "Standard_LRS",
+                "Standard_ZRS",
+                "Standard_GRS",
+                "Standard_RAGRS",
+                "Premium_LRS"
+            ]
+        }
+    },
+    "resources": [
+        {
+            "name": "DemoVNET",
+            "type": "Microsoft.Network/virtualNetworks",
+            "location": "[resourceGroup().location]",
+            "apiVersion": "2015-06-15",
+            "dependsOn": [],
+            "tags": {
+                "displayName": "DemoVNET"
+            },
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "[variables('DemoVNETPrefix')]"
+                    ]
+                },
+                "subnets": [
+                    {
+                        "name": "[variables('DemoVNETSubnet1Name')]",
+                        "properties": {
+                            "addressPrefix": "[variables('DemoVNETSubnet1Prefix')]"
+                        }
+                    },
+                    {
+                        "name": "[variables('DemoVNETSubnet2Name')]",
+                        "properties": {
+                            "addressPrefix": "[variables('DemoVNETSubnet2Prefix')]"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "name": "[variables('DemoVMNicName')]",
+            "type": "Microsoft.Network/networkInterfaces",
+            "location": "[resourceGroup().location]",
+            "apiVersion": "2015-06-15",
+            "dependsOn": [
+                "[concat('Microsoft.Network/virtualNetworks/', 'DemoVNET')]"
+            ],
+            "tags": {
+                "displayName": "DemoVMNic"
+            },
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig1",
+                        "properties": {
+                            "privateIPAllocationMethod": "Dynamic",
+                            "subnet": {
+                                "id": "[variables('DemoVMSubnetRef')]"
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "name": "[parameters('DemoVMName')]",
+            "type": "Microsoft.Compute/virtualMachines",
+            "location": "[resourceGroup().location]",
+            "apiVersion": "2015-06-15",
+            "dependsOn": [
+                "[concat('Microsoft.Storage/storageAccounts/', variables('DemoBlobName'))]",
+                "[concat('Microsoft.Network/networkInterfaces/', variables('DemoVMNicName'))]"
+            ],
+            "tags": {
+                "displayName": "DemoVM"
+            },
+            "properties": {
+                "hardwareProfile": {
+                    "vmSize": "[variables('DemoVMVmSize')]"
+                },
+                "osProfile": {
+                    "computerName": "[parameters('DemoVMName')]",
+                    "adminUsername": "[parameters('DemoVMAdminUsername')]",
+                    "adminPassword": "[parameters('DemoVMAdminPassword')]"
+                },
+                "storageProfile": {
+                    "imageReference": {
+                        "publisher": "[variables('DemoVMImagePublisher')]",
+                        "offer": "[variables('DemoVMImageOffer')]",
+                        "sku": "[parameters('DemoVMWindowsOSVersion')]",
+                        "version": "latest"
+                    },
+                    "osDisk": {
+                        "name": "DemoVMOSDisk",
+                        "vhd": {
+                            "uri": "[concat('http://', variables('DemoBlobName'), '.blob.core.windows.net/', variables('DemoVMStorageAccountContainerName'), '/', variables('DemoVMOSDiskName'), '.vhd')]"
+                        },
+                        "caching": "ReadWrite",
+                        "createOption": "FromImage"
+                    }
+                },
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('DemoVMNicName'))]"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "name": "[variables('DemoBlobName')]",
+            "type": "Microsoft.Storage/storageAccounts",
+            "location": "[resourceGroup().location]",
+            "apiVersion": "2015-06-15",
+            "dependsOn": [],
+            "tags": {
+                "displayName": "DemoBlob"
+            },
+            "properties": {
+                "accountType": "[parameters('DemoBlobType')]"
+            }
+        }
+    ],
+    "variables": {
+        "DemoVNETPrefix": "10.0.0.0/16",
+        "DemoVNETSubnet1Name": "Subnet-1",
+        "DemoVNETSubnet1Prefix": "10.0.0.0/24",
+        "DemoVNETSubnet2Name": "Subnet-2",
+        "DemoVNETSubnet2Prefix": "10.0.1.0/24",
+        "DemoVMImagePublisher": "MicrosoftWindowsServer",
+        "DemoVMImageOffer": "WindowsServer",
+        "DemoVMOSDiskName": "DemoVMOSDisk",
+        "DemoVMVmSize": "Standard_D1",
+        "DemoVMVnetID": "[resourceId('Microsoft.Network/virtualNetworks', 'DemoVNET')]",
+        "DemoVMSubnetRef": "[concat(variables('DemoVMVnetID'), '/subnets/', variables('DemoVNETSubnet1Name'))]",
+        "DemoVMStorageAccountContainerName": "vhds",
+        "DemoVMNicName": "[concat(parameters('DemoVMName'), 'NetworkInterface')]",
+        "DemoBlobName": "[concat('DemoBlob', uniqueString(resourceGroup().id))]"
+    }
+}
